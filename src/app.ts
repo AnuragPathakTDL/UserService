@@ -1,4 +1,9 @@
 import Fastify from "fastify";
+import {
+  serializerCompiler,
+  validatorCompiler,
+  ZodTypeProvider,
+} from "fastify-type-provider-zod";
 import sensible from "@fastify/sensible";
 import helmet from "@fastify/helmet";
 import cors from "@fastify/cors";
@@ -24,7 +29,10 @@ export async function buildApp() {
     },
     trustProxy: true,
     bodyLimit: config.HTTP_BODY_LIMIT,
-  });
+  }).withTypeProvider<ZodTypeProvider>();
+
+  fastify.setValidatorCompiler(validatorCompiler);
+  fastify.setSerializerCompiler(serializerCompiler);
 
   await fastify.register(sensible);
   await fastify.register(cors, { origin: false });

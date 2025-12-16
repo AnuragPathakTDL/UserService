@@ -20,6 +20,8 @@ Role-Based Access Control (RBAC) service for PocketLOL. Manages roles, permissio
 
 ## Setup
 
+To run UserService alongside the rest of the PocketLOL stack, execute `docker compose up --build` from the repository root (see [../README.md](../README.md)).
+
 1. Install dependencies:
 
 ```bash

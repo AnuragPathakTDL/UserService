@@ -1,7 +1,6 @@
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import * as grpc from "@grpc/grpc-js";
-import protoLoader from "@grpc/proto-loader";
+import { loadSync } from "@grpc/proto-loader";
 import type { FastifyInstance } from "fastify";
 import type { PrismaClient } from "@prisma/client";
 import { loadConfig } from "../config";
@@ -22,8 +21,6 @@ type Server = grpc.Server;
 type Metadata = grpc.Metadata;
 const { ServerCredentials, status } = grpc;
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 const PROTO_PATH = path.join(__dirname, "../../proto/user.proto");
 
 type UserPackageDefinition = ReturnType<typeof grpc.loadPackageDefinition> & {
@@ -167,7 +164,7 @@ function toContextMessage(context: UserContextDTO): GetUserContextResponse {
 }
 
 function getUserPackage(): UserPackageDefinition["user"]["v1"] {
-  const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
+  const packageDefinition = loadSync(PROTO_PATH, {
     keepCase: true,
     longs: String,
     enums: String,
