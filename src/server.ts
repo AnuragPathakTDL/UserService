@@ -13,6 +13,7 @@ async function main() {
       app,
       prisma: app.prisma,
       serviceToken: config.SERVICE_AUTH_TOKEN,
+      authService: app.authService,
     });
     app.log.info(
       { http: `${config.HTTP_HOST}:${config.HTTP_PORT}` },

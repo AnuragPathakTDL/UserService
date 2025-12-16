@@ -19,6 +19,7 @@ import {
   serializeRole,
   serializeUserContext,
 } from "../utils/serialize";
+import { isAdminVerificationError } from "../types/auth-service";
 
 export default fp(async function adminUserRoutes(fastify: FastifyInstance) {
   fastify.get("/users/:userId/context", {
@@ -30,7 +31,10 @@ export default fp(async function adminUserRoutes(fastify: FastifyInstance) {
     },
     handler: async (request) => {
       const params = userIdParamsSchema.parse(request.params);
-      const context = await getUserContext(request.server.prisma, params.userId);
+      const context = await getUserContext(
+        request.server.prisma,
+        params.userId
+      );
       return serializeUserContext(context);
     },
   });
@@ -46,6 +50,31 @@ export default fp(async function adminUserRoutes(fastify: FastifyInstance) {
     handler: async (request, reply) => {
       const params = userIdParamsSchema.parse(request.params);
       const body = assignRoleBodySchema.parse(request.body);
+      if (!request.server.authService.isEnabled) {
+        throw request.server.httpErrors.serviceUnavailable(
+          "AuthService integration is required for assigning roles"
+        );
+      }
+      try {
+        await request.server.authService.ensureAdminUser(params.userId);
+      } catch (error) {
+        if (isAdminVerificationError(error)) {
+          if (error.reason === "NOT_FOUND") {
+            throw request.server.httpErrors.notFound(error.message);
+          }
+          if (error.reason === "NOT_ADMIN") {
+            throw request.server.httpErrors.forbidden(error.message);
+          }
+          if (error.reason === "INACTIVE") {
+            throw request.server.httpErrors.conflict(error.message);
+          }
+        }
+        request.log.error(
+          { err: error, userId: params.userId },
+          "Failed to verify admin user with AuthService"
+        );
+        throw request.server.httpErrors.internalServerError();
+      }
       const assignment = await assignRole(request.server.prisma, {
         userId: params.userId,
         roleId: body.roleId,

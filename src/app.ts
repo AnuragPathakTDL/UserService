@@ -9,6 +9,7 @@ import helmet from "@fastify/helmet";
 import cors from "@fastify/cors";
 import { loadConfig } from "./config";
 import prismaPlugin from "./plugins/prisma";
+import authServicePlugin from "./plugins/auth-service";
 import adminUserRoutes from "./routes/admin-users";
 import { ensureSystemRoles } from "./services/bootstrap";
 
@@ -41,6 +42,7 @@ export async function buildApp() {
     contentSecurityPolicy: false,
   });
   await fastify.register(prismaPlugin);
+  await fastify.register(authServicePlugin);
   await ensureSystemRoles(fastify.prisma);
   await fastify.register(adminUserRoutes, { prefix: "/admin" });
 

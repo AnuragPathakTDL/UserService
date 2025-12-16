@@ -84,6 +84,19 @@ AuthService integrates with UserService via gRPC to:
 - Validate admin user role assignments during login
 - Automatically assign admin roles during registration
 - Fetch RBAC context for token enrichment
+- Enforce that RBAC roles are only applied to AuthService users registered as `ADMIN`
+
+Configure the following environment variables so UserService can reach AuthService:
+
+- `AUTH_SERVICE_ADDRESS` - gRPC address for AuthService (`host:port`)
+- `AUTH_SERVICE_TOKEN` - Bearer token that must match AuthService `SERVICE_AUTH_TOKEN`
+
+## System Roles
+
+- **SUPER_ADMIN** - Full access, including admin management, disclosures, and role maintenance
+- **ADMIN** - Manage users, transactions, dashboard, and role assignments
+- **RIA** - Access dashboard, subscription management, and advisor tooling
+- **FINANCIAL_TEAM** - Access dashboard and transaction management
 
 ## Database Schema
 

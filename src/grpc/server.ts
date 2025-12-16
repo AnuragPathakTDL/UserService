@@ -16,6 +16,10 @@ import type {
   RoleDTO,
   UserContextDTO,
 } from "../types/rbac";
+import {
+  type AuthServiceIntegration,
+  isAdminVerificationError,
+} from "../types/auth-service";
 
 type Server = grpc.Server;
 type Metadata = grpc.Metadata;
@@ -101,6 +105,7 @@ type HandlerContext = {
   app: FastifyInstance;
   prisma: PrismaClient;
   serviceToken?: string;
+  authService: AuthServiceIntegration;
 };
 
 const createServiceError = (
@@ -240,7 +245,17 @@ export async function startGrpcServer(
       );
       return;
     }
+    if (!handlerContext.authService.isEnabled) {
+      callback(
+        createServiceError(
+          status.FAILED_PRECONDITION,
+          "AuthService integration is required for assigning roles"
+        )
+      );
+      return;
+    }
     try {
+      await handlerContext.authService.ensureAdminUser(userId);
       const assignment = await assignRole(handlerContext.prisma, {
         userId,
         roleId,
@@ -252,6 +267,22 @@ export async function startGrpcServer(
         assignment: toAssignmentMessage(assignment),
       });
     } catch (error) {
+      if (isAdminVerificationError(error)) {
+        let grpcStatus = status.INTERNAL;
+        switch (error.reason) {
+          case "NOT_FOUND":
+            grpcStatus = status.NOT_FOUND;
+            break;
+          case "NOT_ADMIN":
+            grpcStatus = status.PERMISSION_DENIED;
+            break;
+          case "INACTIVE":
+            grpcStatus = status.FAILED_PRECONDITION;
+            break;
+        }
+        callback(createServiceError(grpcStatus, error.message));
+        return;
+      }
       handlerContext.app.log.error(
         { err: error, userId, roleId },
         "Failed to assign role"
