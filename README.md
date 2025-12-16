@@ -21,22 +21,26 @@ Role-Based Access Control (RBAC) service for PocketLOL. Manages roles, permissio
 ## Setup
 
 1. Install dependencies:
+
 ```bash
 npm install
 ```
 
 2. Configure environment:
+
 ```bash
 cp .env.example .env
 # Edit .env with your configuration
 ```
 
 3. Run Prisma migrations:
+
 ```bash
 npm run migrate:dev
 ```
 
 4. Generate Prisma client:
+
 ```bash
 npm run generate
 ```
@@ -74,6 +78,7 @@ npm start
 ## Integration
 
 AuthService integrates with UserService via gRPC to:
+
 - Validate admin user role assignments during login
 - Automatically assign admin roles during registration
 - Fetch RBAC context for token enrichment
