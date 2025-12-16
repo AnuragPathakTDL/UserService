@@ -1,0 +1,12 @@
+node_modules
+dist
+.env
+.env.test
+coverage
+.DS_Store
+npm-debug.log
+yarn-error.log
+.vscode
+tasks.md
+.github
+.idea
