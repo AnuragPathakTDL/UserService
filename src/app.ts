@@ -10,6 +10,7 @@ import cors from "@fastify/cors";
 import { loadConfig } from "./config";
 import prismaPlugin from "./plugins/prisma";
 import adminUserRoutes from "./routes/admin-users";
+import { ensureSystemRoles } from "./services/bootstrap";
 
 export async function buildApp() {
   const config = loadConfig();
@@ -40,6 +41,7 @@ export async function buildApp() {
     contentSecurityPolicy: false,
   });
   await fastify.register(prismaPlugin);
+  await ensureSystemRoles(fastify.prisma);
   await fastify.register(adminUserRoutes, { prefix: "/admin" });
 
   fastify.get("/health", async () => ({ status: "ok" }));
