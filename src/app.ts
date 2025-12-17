@@ -44,7 +44,11 @@ export async function buildApp() {
   await fastify.register(prismaPlugin);
   await fastify.register(authServicePlugin);
   await ensureSystemRoles(fastify.prisma);
-  await fastify.register(adminUserRoutes, { prefix: "/admin" });
+
+  const externalBase = "/api/v1/user";
+  await fastify.register(adminUserRoutes, {
+    prefix: `${externalBase}/admin`,
+  });
 
   fastify.get("/health", async () => ({ status: "ok" }));
 
