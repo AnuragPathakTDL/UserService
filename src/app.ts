@@ -12,6 +12,7 @@ import prismaPlugin from "./plugins/prisma";
 import authServicePlugin from "./plugins/auth-service";
 import adminUserRoutes from "./routes/admin-users";
 import { ensureSystemRoles } from "./services/bootstrap";
+import responseEnvelopePlugin from "./plugins/response-envelope";
 
 export async function buildApp() {
   const config = loadConfig();
@@ -41,6 +42,7 @@ export async function buildApp() {
   await fastify.register(helmet, {
     contentSecurityPolicy: false,
   });
+  await fastify.register(responseEnvelopePlugin);
   await fastify.register(prismaPlugin);
   await fastify.register(authServicePlugin);
   await ensureSystemRoles(fastify.prisma);
