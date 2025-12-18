@@ -1,8 +1,8 @@
 export interface AuthServiceUser {
   id: string;
   email: string;
-  username: string;
   role: string;
+  userType: string;
   active: boolean;
 }
 

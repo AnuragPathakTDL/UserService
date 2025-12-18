@@ -31,7 +31,6 @@ type GetUserByIdRequest = {
 type GetUserByIdResponse = {
   user_id: string;
   email: string;
-  username: string;
   role: string;
   active: boolean;
 };
@@ -64,8 +63,8 @@ function mapUser(message: GetUserByIdResponse): AuthServiceUser {
   return {
     id: message.user_id,
     email: message.email,
-    username: message.username,
     role: message.role,
+    userType: message.role,
     active: message.active,
   };
 }

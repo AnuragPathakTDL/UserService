@@ -2,7 +2,7 @@ import path from "node:path";
 import * as grpc from "@grpc/grpc-js";
 import { loadSync } from "@grpc/proto-loader";
 import type { FastifyInstance } from "fastify";
-import type { PrismaClient } from "@prisma/client";
+import { GuestStatus, type PrismaClient } from "@prisma/client";
 import { loadConfig } from "../config";
 import {
   assignRole,
@@ -10,6 +10,10 @@ import {
   listRoles,
   revokeRole,
 } from "../services/rbac";
+import {
+  ensureCustomerProfile,
+  registerGuestProfile,
+} from "../services/identity";
 import type {
   PermissionDTO,
   RoleAssignmentDTO,
@@ -99,6 +103,38 @@ interface ListRolesResponse {
   roles: RoleMessage[];
 }
 
+interface EnsureCustomerProfileRequest {
+  firebase_uid?: string;
+  phone_number?: string;
+  device_id?: string;
+  guest_id?: string;
+}
+
+interface EnsureCustomerProfileResponse {
+  customer_id: string;
+  device_identity_id: string;
+  guest_migrated: boolean;
+  guest_profile_id: string;
+}
+
+interface RegisterGuestRequest {
+  guest_id?: string;
+  device_id?: string;
+}
+
+enum GuestProfileStatusMessage {
+  GUEST_PROFILE_STATUS_UNSPECIFIED = 0,
+  GUEST_PROFILE_STATUS_ACTIVE = 1,
+  GUEST_PROFILE_STATUS_MIGRATED = 2,
+}
+
+interface RegisterGuestResponse {
+  guest_profile_id: string;
+  device_identity_id: string;
+  status: GuestProfileStatusMessage;
+  customer_id: string;
+}
+
 type UnaryHandler<Req, Res> = grpc.handleUnaryCall<Req, Res>;
 
 type HandlerContext = {
@@ -166,6 +202,19 @@ function toContextMessage(context: UserContextDTO): GetUserContextResponse {
     permissions: context.permissions.map(toPermissionMessage),
     assignments: context.assignments.map(toAssignmentMessage),
   };
+}
+
+function toGuestProfileStatus(
+  statusValue: GuestStatus
+): GuestProfileStatusMessage {
+  switch (statusValue) {
+    case GuestStatus.ACTIVE:
+      return GuestProfileStatusMessage.GUEST_PROFILE_STATUS_ACTIVE;
+    case GuestStatus.MIGRATED:
+      return GuestProfileStatusMessage.GUEST_PROFILE_STATUS_MIGRATED;
+    default:
+      return GuestProfileStatusMessage.GUEST_PROFILE_STATUS_UNSPECIFIED;
+  }
 }
 
 function getUserPackage(): UserPackageDefinition["user"]["v1"] {
@@ -332,11 +381,93 @@ export async function startGrpcServer(
     }
   };
 
+  const ensureCustomerProfileHandler: UnaryHandler<
+    EnsureCustomerProfileRequest,
+    EnsureCustomerProfileResponse
+  > = async (call, callback) => {
+    const firebaseUid = call.request.firebase_uid;
+    const deviceId = call.request.device_id;
+    if (!firebaseUid || !deviceId) {
+      callback(
+        createServiceError(
+          status.INVALID_ARGUMENT,
+          "firebase_uid and device_id are required"
+        )
+      );
+      return;
+    }
+
+    try {
+      const result = await ensureCustomerProfile({
+        prisma: handlerContext.prisma,
+        firebaseUid,
+        phoneNumber: call.request.phone_number || undefined,
+        deviceId,
+        guestId: call.request.guest_id || undefined,
+      });
+
+      callback(null, {
+        customer_id: result.customerId,
+        device_identity_id: result.deviceIdentityId,
+        guest_migrated: result.guestMigrated,
+        guest_profile_id: result.guestProfileId ?? "",
+      });
+    } catch (error) {
+      handlerContext.app.log.error(
+        { err: error, firebaseUid, deviceId },
+        "Failed to ensure customer profile"
+      );
+      callback(
+        createServiceError(status.INTERNAL, "Failed to ensure customer profile")
+      );
+    }
+  };
+
+  const registerGuestHandler: UnaryHandler<
+    RegisterGuestRequest,
+    RegisterGuestResponse
+  > = async (call, callback) => {
+    const guestId = call.request.guest_id;
+    const deviceId = call.request.device_id;
+    if (!guestId || !deviceId) {
+      callback(
+        createServiceError(
+          status.INVALID_ARGUMENT,
+          "guest_id and device_id are required"
+        )
+      );
+      return;
+    }
+
+    try {
+      const result = await registerGuestProfile({
+        prisma: handlerContext.prisma,
+        guestId,
+        deviceId,
+      });
+
+      callback(null, {
+        guest_profile_id: result.guestProfileId,
+        device_identity_id: result.deviceIdentityId,
+        status: toGuestProfileStatus(result.status),
+        customer_id: result.customerId ?? "",
+      });
+    } catch (error) {
+      handlerContext.app.log.error(
+        { err: error, guestId, deviceId },
+        "Failed to register guest profile"
+      );
+      callback(createServiceError(status.INTERNAL, "Failed to register guest"));
+    }
+  };
+
   server.addService(userPackage.UserService.service, {
     GetUserContext: wrapAuthorization(getUserContextHandler),
     AssignRole: wrapAuthorization(assignRoleHandler),
     RevokeRole: wrapAuthorization(revokeRoleHandler),
     ListRoles: wrapAuthorization(listRolesHandler),
+    EnsureCustomerProfile: wrapAuthorization(ensureCustomerProfileHandler),
+    RegisterGuest: wrapAuthorization(registerGuestHandler),
   });
 
   await new Promise<void>((resolve, reject) => {

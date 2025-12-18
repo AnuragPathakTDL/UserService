@@ -58,3 +58,55 @@ model UserRoleAssignment {
   @@index([userId])
   @@unique([userId, roleId, scope])
 }
+
+enum GuestStatus {
+  ACTIVE
+  MIGRATED
+}
+
+model DeviceIdentity {
+  id           String               @id @default(uuid())
+  deviceId     String               @unique
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+  lastSeenAt   DateTime?
+  customerLinks CustomerDeviceLink[]
+  guestProfiles GuestProfile[]
+}
+
+model CustomerProfile {
+  id           String               @id @default(uuid())
+  firebaseUid  String               @unique
+  phoneNumber  String?
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+  devices      CustomerDeviceLink[]
+  guestMigrations GuestProfile[]    @relation("GuestCustomerMigration")
+}
+
+model CustomerDeviceLink {
+  id               String          @id @default(uuid())
+  customer         CustomerProfile @relation(fields: [customerId], references: [id])
+  customerId       String
+  device           DeviceIdentity  @relation(fields: [deviceIdentityId], references: [id])
+  deviceIdentityId String
+  firstLinkedAt    DateTime        @default(now())
+  lastLinkedAt     DateTime        @updatedAt
+
+  @@unique([customerId, deviceIdentityId])
+}
+
+model GuestProfile {
+  id               String           @id @default(uuid())
+  guestId          String
+  device           DeviceIdentity   @relation(fields: [deviceIdentityId], references: [id])
+  deviceIdentityId String
+  status           GuestStatus      @default(ACTIVE)
+  migratedAt       DateTime?
+  customer         CustomerProfile? @relation("GuestCustomerMigration", fields: [customerId], references: [id])
+  customerId       String?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  @@unique([guestId, deviceIdentityId])
+}

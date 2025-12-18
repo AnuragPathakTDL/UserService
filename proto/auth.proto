@@ -14,7 +14,7 @@ message ValidateTokenRequest {
 message ValidateTokenResponse {
   bool valid = 1;
   string user_id = 2;
-  string username = 3;
+  string user_type = 3;
   string role = 4;
   string reason = 5;
 }
@@ -26,7 +26,6 @@ message GetUserByIdRequest {
 message GetUserByIdResponse {
   string user_id = 1;
   string email = 2;
-  string username = 3;
-  string role = 4;
-  bool active = 5;
+  string role = 3;
+  bool active = 4;
 }

@@ -7,6 +7,8 @@ service UserService {
   rpc AssignRole (AssignRoleRequest) returns (AssignRoleResponse);
   rpc RevokeRole (RevokeRoleRequest) returns (RevokeRoleResponse);
   rpc ListRoles (ListRolesRequest) returns (ListRolesResponse);
+  rpc EnsureCustomerProfile (EnsureCustomerProfileRequest) returns (EnsureCustomerProfileResponse);
+  rpc RegisterGuest (RegisterGuestRequest) returns (RegisterGuestResponse);
 }
 
 message Permission {
@@ -68,4 +70,36 @@ message ListRolesRequest {}
 
 message ListRolesResponse {
   repeated Role roles = 1;
+}
+
+enum GuestProfileStatus {
+  GUEST_PROFILE_STATUS_UNSPECIFIED = 0;
+  GUEST_PROFILE_STATUS_ACTIVE = 1;
+  GUEST_PROFILE_STATUS_MIGRATED = 2;
+}
+
+message EnsureCustomerProfileRequest {
+  string firebase_uid = 1;
+  string phone_number = 2;
+  string device_id = 3;
+  string guest_id = 4;
+}
+
+message EnsureCustomerProfileResponse {
+  string customer_id = 1;
+  string device_identity_id = 2;
+  bool guest_migrated = 3;
+  string guest_profile_id = 4;
+}
+
+message RegisterGuestRequest {
+  string guest_id = 1;
+  string device_id = 2;
+}
+
+message RegisterGuestResponse {
+  string guest_profile_id = 1;
+  string device_identity_id = 2;
+  GuestProfileStatus status = 3;
+  string customer_id = 4;
 }
