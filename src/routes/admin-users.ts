@@ -93,8 +93,7 @@ export default fp(async function adminUserRoutes(fastify: FastifyInstance) {
   });
 
   fastify.get("/roles", {
-    schema: {
-    },
+    schema: {},
     handler: async (request) => {
       const roles = await listRoles(request.server.prisma);
       return {
